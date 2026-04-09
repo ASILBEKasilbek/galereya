@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>QR Kod Galereya + PDF + Surat | Kamolov Xurshidbek</title>
+    <title>QR Kod Galereya + Bitta PDF | Kamolov Xurshidbek</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -143,16 +143,6 @@
             transform: translateY(-2px);
         }
 
-        .btn-pdf-all {
-            background: #7c3aed;
-            color: white;
-        }
-
-        .btn-pdf-all:hover {
-            background: #6d28d9;
-            transform: translateY(-2px);
-        }
-
         .btn-clear {
             background: #6b7280;
             color: white;
@@ -250,21 +240,6 @@
             background: #059669;
         }
 
-        .pdf-btn-small {
-            background: #dc2626;
-            color: white;
-            border: none;
-            padding: 5px 12px;
-            border-radius: 30px;
-            font-size: 0.7rem;
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        .pdf-btn-small:hover {
-            background: #b91c1c;
-        }
-
         .qr-container {
             padding: 25px;
             display: flex;
@@ -340,7 +315,7 @@
 <body>
 <div class="container">
     <div class="header">
-        <h1>📱 QR Kod Galereya + PDF + Surat</h1>
+        <h1>📱 QR Kod Galereya + Bitta PDF</h1>
         <div class="developer">👨‍💻 Dasturchi: Kamolov Xurshidbek</div>
     </div>
     <div class="content">
@@ -357,7 +332,7 @@
             <button class="btn-gallery" id="galleryBtn">🖼️ Galereyadan rasm tanla</button>
             <button class="btn-generate" id="generateBtn">✨ QR kodlarni yaratish</button>
             <button class="btn-save" id="saveAllBtn">💾 HAMMASINI SURATGA SAQLASH</button>
-            <button class="btn-pdf" id="pdfAllBtn">📄 HAMMASINI ALOHIDA PDF QILIB YUKLASH</button>
+            <button class="btn-pdf" id="pdfOneBtn">📄 BITTA PDF (har bir QR alohida sahifada)</button>
             <button class="btn-clear" id="clearBtn">🗑️ Tozalash</button>
         </div>
 
@@ -370,8 +345,8 @@
         </div>
         <footer>
             💾 "SURATGA SAQLASH" - barcha QR kodlarni PNG rasm sifatida saqlaydi<br>
-            📄 "ALOHIDA PDF" - har bir QR kodni alohida PDF fayl qilib yuklaydi<br>
-            🔹 Har bir kartochkada ham suratga, ham PDF ga saqlash tugmalari bor
+            📄 "BITTA PDF" - barcha QR kodlarni bir PDF faylga joylaydi (har biri alohida sahifada)<br>
+            🔹 Har bir kartochkada alohida suratga saqlash tugmasi bor
         </footer>
     </div>
 </div>
@@ -384,7 +359,7 @@
     const generateBtn = document.getElementById('generateBtn');
     const clearBtn = document.getElementById('clearBtn');
     const saveAllBtn = document.getElementById('saveAllBtn');
-    const pdfAllBtn = document.getElementById('pdfAllBtn');
+    const pdfOneBtn = document.getElementById('pdfOneBtn');
     const galleryContainer = document.getElementById('galleryContainer');
     const statsSpan = document.getElementById('statsCounter');
     const galleryBtn = document.getElementById('galleryBtn');
@@ -447,25 +422,22 @@
         document.body.removeChild(link);
     }
 
-    // ALOHIDA PDF yaratish (birorta QR kod uchun)
-    async function saveSingleAsPDF(index) {
-        const item = qrData[index];
-        if (!item) return;
-        
-        showToast(`⏳ PDF tayyorlanmoqda: ${item.text}`);
-        
-        let qrUrl = item.qrCodeUrl;
-        if (!qrUrl) {
-            qrUrl = await generateQRCodeImage(item.text, 300);
-            item.qrCodeUrl = qrUrl;
-        }
-        
-        if (!qrUrl) {
-            showToast('QR kod yaratilmadi', true);
+    // BITTA PDF - har bir QR kod alohida sahifada
+    async function saveAsOnePDF() {
+        if (qrData.length === 0) {
+            showToast('Hech qanday QR kod yo\'q!', true);
             return;
         }
         
+        if (!confirm(`${qrData.length} ta QR kod bitta PDF faylga joylanadi (har biri alohida sahifada). Davom etilsinmi?`)) {
+            return;
+        }
+        
+        showToast(`⏳ PDF tayyorlanmoqda (${qrData.length} sahifa)...`);
+        
         const { jsPDF } = window.jspdf;
+        
+        // Birinchi sahifa uchun PDF yaratish
         const pdf = new jsPDF({
             unit: 'mm',
             format: 'a4',
@@ -475,41 +447,6 @@
         const pageWidth = 210;
         const pageHeight = 297;
         const qrSize = 80;
-        
-        // QR kodni qo'shish
-        pdf.addImage(qrUrl, 'PNG', (pageWidth - qrSize) / 2, 60, qrSize, qrSize);
-        
-        // Raqamni yozish
-        pdf.setFontSize(14);
-        pdf.setTextColor(50, 50, 50);
-        pdf.text(item.text, pageWidth / 2, 60 + qrSize + 15, { align: 'center' });
-        
-        // Sana qo'shish
-        pdf.setFontSize(9);
-        pdf.setTextColor(150, 150, 150);
-        const today = new Date().toLocaleDateString('uz-UZ');
-        pdf.text(`Yaratilgan: ${today}`, pageWidth / 2, pageHeight - 20, { align: 'center' });
-        
-        let fileName = item.text.replace(/[^a-z0-9]/gi, '_');
-        if (!fileName || fileName.length < 3) fileName = `QR_${index+1}`;
-        fileName = `${fileName}.pdf`;
-        
-        pdf.save(fileName);
-        showToast(`✅ PDF saqlandi: ${item.text}`);
-    }
-
-    // Hammasini alohida PDF qilib yuklash
-    async function saveAllAsPDF() {
-        if (qrData.length === 0) {
-            showToast('Hech qanday QR kod yo\'q!', true);
-            return;
-        }
-        
-        if (!confirm(`${qrData.length} ta alohida PDF fayl yuklanadi. Davom etilsinmi?`)) {
-            return;
-        }
-        
-        showToast(`⏳ ${qrData.length} ta PDF tayyorlanmoqda...`);
         
         for (let i = 0; i < qrData.length; i++) {
             const item = qrData[i];
@@ -522,38 +459,33 @@
             
             if (!qrUrl) continue;
             
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF({
-                unit: 'mm',
-                format: 'a4',
-                orientation: 'portrait'
-            });
+            // Agar birinchi sahifa bo'lmasa, yangi sahifa qo'shish
+            if (i !== 0) {
+                pdf.addPage();
+            }
             
-            const pageWidth = 210;
-            const pageHeight = 297;
-            const qrSize = 80;
+            // QR kodni qo'shish (markazda)
+            pdf.addImage(qrUrl, 'PNG', (pageWidth - qrSize) / 2, 50, qrSize, qrSize);
             
-            pdf.addImage(qrUrl, 'PNG', (pageWidth - qrSize) / 2, 60, qrSize, qrSize);
+            // Raqamni yozish (QR kod ostiga)
             pdf.setFontSize(14);
             pdf.setTextColor(50, 50, 50);
-            pdf.text(item.text, pageWidth / 2, 60 + qrSize + 15, { align: 'center' });
+            pdf.text(item.text, pageWidth / 2, 50 + qrSize + 15, { align: 'center' });
             
-            pdf.setFontSize(9);
+            // Sahifa raqami
+            pdf.setFontSize(10);
             pdf.setTextColor(150, 150, 150);
+            pdf.text(`${i + 1} / ${qrData.length}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
+            
+            // Sana
             const today = new Date().toLocaleDateString('uz-UZ');
-            pdf.text(`Yaratilgan: ${today}`, pageWidth / 2, pageHeight - 20, { align: 'center' });
-            
-            let fileName = item.text.replace(/[^a-z0-9]/gi, '_');
-            if (!fileName || fileName.length < 3) fileName = `QR_${i+1}`;
-            fileName = `${fileName}.pdf`;
-            
-            pdf.save(fileName);
-            await new Promise(r => setTimeout(r, 300));
-            
-            showToast(`✅ ${i+1}/${qrData.length} PDF yuklandi`);
+            pdf.setFontSize(8);
+            pdf.text(`Yaratilgan: ${today}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
         }
         
-        showToast(`✅ Barcha ${qrData.length} ta PDF yuklandi!`);
+        const fileName = `QR_Codes_${qrData.length}_ta.pdf`;
+        pdf.save(fileName);
+        showToast(`✅ PDF yuklandi! (${qrData.length} sahifa, ${qrData.length} ta QR kod)`);
     }
 
     // Hammasini suratga saqlash
@@ -584,7 +516,7 @@
                 fileName = `${fileName}.png`;
                 
                 saveImageToGallery(qrUrl, fileName);
-                await new Promise(r => setTimeout(r, 300));
+                await new Promise(r => setTimeout(r, 200));
             }
         }
         
@@ -628,16 +560,7 @@
                 }
             };
             
-            const pdfBtn = document.createElement('button');
-            pdfBtn.className = 'pdf-btn-small';
-            pdfBtn.innerHTML = '📄 PDF';
-            pdfBtn.onclick = (e) => {
-                e.stopPropagation();
-                saveSingleAsPDF(i);
-            };
-            
             btnGroup.appendChild(saveBtn);
-            btnGroup.appendChild(pdfBtn);
             header.appendChild(btnGroup);
             
             const qrContainerDiv = document.createElement('div');
@@ -784,11 +707,11 @@
     generateBtn.addEventListener('click', generateQRCodes);
     clearBtn.addEventListener('click', clearAll);
     saveAllBtn.addEventListener('click', saveAllToGallery);
-    pdfAllBtn.addEventListener('click', saveAllAsPDF);
+    pdfOneBtn.addEventListener('click', saveAsOnePDF);
     
     window.addEventListener('DOMContentLoaded', async () => {
         if (textarea.value.trim() === "") {
-            textarea.value = `12000470545\n12000470546\n12000471225\n12000480674`;
+            textarea.value = `12000470545\n12000470546\n12000471225\n12000480674\n12000476852`;
         }
         await generateQRCodes();
     });
