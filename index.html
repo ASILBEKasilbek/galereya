@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>QR Kod Galereya | Saqlash | Kamolov Xurshidbek</title>
+    <title>QR Kod Galereya + PDF + Surat | Kamolov Xurshidbek</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -131,8 +133,28 @@
             transform: translateY(-2px);
         }
 
+        .btn-pdf {
+            background: #dc2626;
+            color: white;
+        }
+
+        .btn-pdf:hover {
+            background: #b91c1c;
+            transform: translateY(-2px);
+        }
+
+        .btn-pdf-all {
+            background: #7c3aed;
+            color: white;
+        }
+
+        .btn-pdf-all:hover {
+            background: #6d28d9;
+            transform: translateY(-2px);
+        }
+
         .btn-clear {
-            background: #ef4444;
+            background: #6b7280;
             color: white;
         }
 
@@ -164,7 +186,7 @@
 
         .gallery {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 25px;
             margin-top: 25px;
             padding: 10px;
@@ -194,6 +216,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
         .gallery-item-header .number {
@@ -204,6 +228,11 @@
             display: inline-block;
             padding: 4px 12px;
             border-radius: 30px;
+        }
+
+        .btn-group-small {
+            display: flex;
+            gap: 8px;
         }
 
         .save-btn-small {
@@ -219,6 +248,21 @@
 
         .save-btn-small:hover {
             background: #059669;
+        }
+
+        .pdf-btn-small {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .pdf-btn-small:hover {
+            background: #b91c1c;
         }
 
         .qr-container {
@@ -296,7 +340,7 @@
 <body>
 <div class="container">
     <div class="header">
-        <h1>📱 QR Kod Galereya</h1>
+        <h1>📱 QR Kod Galereya + PDF + Surat</h1>
         <div class="developer">👨‍💻 Dasturchi: Kamolov Xurshidbek</div>
     </div>
     <div class="content">
@@ -312,8 +356,9 @@
         <div class="btn-group">
             <button class="btn-gallery" id="galleryBtn">🖼️ Galereyadan rasm tanla</button>
             <button class="btn-generate" id="generateBtn">✨ QR kodlarni yaratish</button>
-            <button class="btn-save" id="saveAllBtn">💾 HAMMASINI GALEREYAGA SAQLASH</button>
-            <button class="btn-clear" id="clearBtn">🗑️ Hammasini tozalash</button>
+            <button class="btn-save" id="saveAllBtn">💾 HAMMASINI SURATGA SAQLASH</button>
+            <button class="btn-pdf" id="pdfAllBtn">📄 HAMMASINI ALOHIDA PDF QILIB YUKLASH</button>
+            <button class="btn-clear" id="clearBtn">🗑️ Tozalash</button>
         </div>
 
         <textarea id="inputData" placeholder="Raqamlar yoki matnlar...&#10;Har bir qator = 1 ta QR kod&#10;Misol:&#10;12000470545&#10;12000470546"></textarea>
@@ -324,7 +369,9 @@
             <div class="empty-gallery">🚀 Hali QR kod yo'q<br>Rasm yuklang yoki matn kiriting</div>
         </div>
         <footer>
-            💾 "HAMMASINI GALEREYAGA SAQLASH" tugmasi barcha QR kodlarni rasm sifatida telefoningizga saqlaydi
+            💾 "SURATGA SAQLASH" - barcha QR kodlarni PNG rasm sifatida saqlaydi<br>
+            📄 "ALOHIDA PDF" - har bir QR kodni alohida PDF fayl qilib yuklaydi<br>
+            🔹 Har bir kartochkada ham suratga, ham PDF ga saqlash tugmalari bor
         </footer>
     </div>
 </div>
@@ -337,11 +384,12 @@
     const generateBtn = document.getElementById('generateBtn');
     const clearBtn = document.getElementById('clearBtn');
     const saveAllBtn = document.getElementById('saveAllBtn');
+    const pdfAllBtn = document.getElementById('pdfAllBtn');
     const galleryContainer = document.getElementById('galleryContainer');
     const statsSpan = document.getElementById('statsCounter');
     const galleryBtn = document.getElementById('galleryBtn');
 
-    let qrData = []; // { text, qrCodeUrl }
+    let qrData = [];
 
     function showToast(message, isError = false) {
         const toast = document.createElement('div');
@@ -356,7 +404,6 @@
         statsSpan.textContent = `📊 QR kodlar soni: ${qrData.length}`;
     }
 
-    // QR kod yaratish
     function generateQRCodeImage(text, size = 130) {
         return new Promise((resolve) => {
             const qrDiv = document.createElement('div');
@@ -390,7 +437,7 @@
         });
     }
 
-    // Rasmni galereyaga saqlash (yuklab olish)
+    // Suratga saqlash
     function saveImageToGallery(imageUrl, filename) {
         const link = document.createElement('a');
         link.href = imageUrl;
@@ -400,10 +447,123 @@
         document.body.removeChild(link);
     }
 
-    // Barcha QR kodlarni saqlash
+    // ALOHIDA PDF yaratish (birorta QR kod uchun)
+    async function saveSingleAsPDF(index) {
+        const item = qrData[index];
+        if (!item) return;
+        
+        showToast(`⏳ PDF tayyorlanmoqda: ${item.text}`);
+        
+        let qrUrl = item.qrCodeUrl;
+        if (!qrUrl) {
+            qrUrl = await generateQRCodeImage(item.text, 300);
+            item.qrCodeUrl = qrUrl;
+        }
+        
+        if (!qrUrl) {
+            showToast('QR kod yaratilmadi', true);
+            return;
+        }
+        
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+            unit: 'mm',
+            format: 'a4',
+            orientation: 'portrait'
+        });
+        
+        const pageWidth = 210;
+        const pageHeight = 297;
+        const qrSize = 80;
+        
+        // QR kodni qo'shish
+        pdf.addImage(qrUrl, 'PNG', (pageWidth - qrSize) / 2, 60, qrSize, qrSize);
+        
+        // Raqamni yozish
+        pdf.setFontSize(14);
+        pdf.setTextColor(50, 50, 50);
+        pdf.text(item.text, pageWidth / 2, 60 + qrSize + 15, { align: 'center' });
+        
+        // Sana qo'shish
+        pdf.setFontSize(9);
+        pdf.setTextColor(150, 150, 150);
+        const today = new Date().toLocaleDateString('uz-UZ');
+        pdf.text(`Yaratilgan: ${today}`, pageWidth / 2, pageHeight - 20, { align: 'center' });
+        
+        let fileName = item.text.replace(/[^a-z0-9]/gi, '_');
+        if (!fileName || fileName.length < 3) fileName = `QR_${index+1}`;
+        fileName = `${fileName}.pdf`;
+        
+        pdf.save(fileName);
+        showToast(`✅ PDF saqlandi: ${item.text}`);
+    }
+
+    // Hammasini alohida PDF qilib yuklash
+    async function saveAllAsPDF() {
+        if (qrData.length === 0) {
+            showToast('Hech qanday QR kod yo\'q!', true);
+            return;
+        }
+        
+        if (!confirm(`${qrData.length} ta alohida PDF fayl yuklanadi. Davom etilsinmi?`)) {
+            return;
+        }
+        
+        showToast(`⏳ ${qrData.length} ta PDF tayyorlanmoqda...`);
+        
+        for (let i = 0; i < qrData.length; i++) {
+            const item = qrData[i];
+            
+            let qrUrl = item.qrCodeUrl;
+            if (!qrUrl) {
+                qrUrl = await generateQRCodeImage(item.text, 300);
+                item.qrCodeUrl = qrUrl;
+            }
+            
+            if (!qrUrl) continue;
+            
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({
+                unit: 'mm',
+                format: 'a4',
+                orientation: 'portrait'
+            });
+            
+            const pageWidth = 210;
+            const pageHeight = 297;
+            const qrSize = 80;
+            
+            pdf.addImage(qrUrl, 'PNG', (pageWidth - qrSize) / 2, 60, qrSize, qrSize);
+            pdf.setFontSize(14);
+            pdf.setTextColor(50, 50, 50);
+            pdf.text(item.text, pageWidth / 2, 60 + qrSize + 15, { align: 'center' });
+            
+            pdf.setFontSize(9);
+            pdf.setTextColor(150, 150, 150);
+            const today = new Date().toLocaleDateString('uz-UZ');
+            pdf.text(`Yaratilgan: ${today}`, pageWidth / 2, pageHeight - 20, { align: 'center' });
+            
+            let fileName = item.text.replace(/[^a-z0-9]/gi, '_');
+            if (!fileName || fileName.length < 3) fileName = `QR_${i+1}`;
+            fileName = `${fileName}.pdf`;
+            
+            pdf.save(fileName);
+            await new Promise(r => setTimeout(r, 300));
+            
+            showToast(`✅ ${i+1}/${qrData.length} PDF yuklandi`);
+        }
+        
+        showToast(`✅ Barcha ${qrData.length} ta PDF yuklandi!`);
+    }
+
+    // Hammasini suratga saqlash
     async function saveAllToGallery() {
         if (qrData.length === 0) {
-            showToast('Hech qanday QR kod yo\'q! Avval QR kodlarni yarating', true);
+            showToast('Hech qanday QR kod yo\'q!', true);
+            return;
+        }
+        
+        if (!confirm(`${qrData.length} ta rasm saqlanadi. Davom etilsinmi?`)) {
             return;
         }
         
@@ -414,48 +574,23 @@
             let qrUrl = item.qrCodeUrl;
             
             if (!qrUrl) {
-                qrUrl = await generateQRCodeImage(item.text, 130);
+                qrUrl = await generateQRCodeImage(item.text, 300);
                 item.qrCodeUrl = qrUrl;
             }
             
             if (qrUrl) {
-                // Fayl nomi: raqam yoki index
                 let fileName = item.text.replace(/[^a-z0-9]/gi, '_');
                 if (!fileName || fileName.length < 3) fileName = `QR_${i+1}`;
                 fileName = `${fileName}.png`;
                 
                 saveImageToGallery(qrUrl, fileName);
-                await new Promise(r => setTimeout(r, 300)); // Kichik tanaffus
+                await new Promise(r => setTimeout(r, 300));
             }
         }
         
-        showToast(`✅ Barcha ${qrData.length} ta QR kod galereyaga saqlandi!`);
+        showToast(`✅ Barcha ${qrData.length} ta rasm saqlandi!`);
     }
 
-    // Bitta QR kodni saqlash
-    async function saveSingleQR(index) {
-        const item = qrData[index];
-        if (!item) return;
-        
-        let qrUrl = item.qrCodeUrl;
-        if (!qrUrl) {
-            qrUrl = await generateQRCodeImage(item.text, 130);
-            item.qrCodeUrl = qrUrl;
-        }
-        
-        if (qrUrl) {
-            let fileName = item.text.replace(/[^a-z0-9]/gi, '_');
-            if (!fileName || fileName.length < 3) fileName = `QR_${index+1}`;
-            fileName = `${fileName}.png`;
-            
-            saveImageToGallery(qrUrl, fileName);
-            showToast(`✅ Saqlandi: ${item.text}`);
-        } else {
-            showToast(`❌ Saqlab bo'lmadi: ${item.text}`, true);
-        }
-    }
-
-    // Galereyani ko'rsatish
     async function renderGallery() {
         galleryContainer.innerHTML = '';
         
@@ -470,22 +605,41 @@
             const galleryItem = document.createElement('div');
             galleryItem.className = 'gallery-item';
             
-            // Header
             const header = document.createElement('div');
             header.className = 'gallery-item-header';
             header.innerHTML = `<span class="number">#${i + 1}</span>`;
             
-            // Saqlash tugmasi (har biriga alohida)
+            const btnGroup = document.createElement('div');
+            btnGroup.className = 'btn-group-small';
+            
             const saveBtn = document.createElement('button');
             saveBtn.className = 'save-btn-small';
-            saveBtn.innerHTML = '💾 Saqlash';
+            saveBtn.innerHTML = '💾 Surat';
             saveBtn.onclick = (e) => {
                 e.stopPropagation();
-                saveSingleQR(i);
+                const url = item.qrCodeUrl;
+                if (url) {
+                    let fileName = item.text.replace(/[^a-z0-9]/gi, '_');
+                    if (!fileName) fileName = `QR_${i+1}`;
+                    saveImageToGallery(url, `${fileName}.png`);
+                    showToast(`✅ Surat saqlandi: ${item.text}`);
+                } else {
+                    showToast('QR kod tayyor emas', true);
+                }
             };
-            header.appendChild(saveBtn);
             
-            // QR kod rasmi
+            const pdfBtn = document.createElement('button');
+            pdfBtn.className = 'pdf-btn-small';
+            pdfBtn.innerHTML = '📄 PDF';
+            pdfBtn.onclick = (e) => {
+                e.stopPropagation();
+                saveSingleAsPDF(i);
+            };
+            
+            btnGroup.appendChild(saveBtn);
+            btnGroup.appendChild(pdfBtn);
+            header.appendChild(btnGroup);
+            
             const qrContainerDiv = document.createElement('div');
             qrContainerDiv.className = 'qr-container';
             
@@ -507,7 +661,6 @@
             img.style.height = '130px';
             qrContainerDiv.appendChild(img);
             
-            // Footer
             const footer = document.createElement('div');
             footer.className = 'gallery-item-footer';
             footer.innerHTML = `<div class="code">📌 ${item.text}</div>`;
@@ -520,7 +673,6 @@
         }
     }
 
-    // OCR - rasmdan matn olish
     async function processOCR(file) {
         if (!file) return;
         
@@ -596,7 +748,6 @@
         fileInput.value = '';
     });
 
-    // QR kodlarni yaratish
     async function generateQRCodes() {
         const rawText = textarea.value;
         const lines = rawText.split(/\r?\n/);
@@ -633,6 +784,7 @@
     generateBtn.addEventListener('click', generateQRCodes);
     clearBtn.addEventListener('click', clearAll);
     saveAllBtn.addEventListener('click', saveAllToGallery);
+    pdfAllBtn.addEventListener('click', saveAllAsPDF);
     
     window.addEventListener('DOMContentLoaded', async () => {
         if (textarea.value.trim() === "") {
@@ -642,4 +794,4 @@
     });
 </script>
 </body>
-</html>4
+</html>
